@@ -6,9 +6,9 @@ import time
 
 # --- 配置区 ---
 FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/your_webhook"
-DEEPSEEK_API_KEY = "your_api_key"  
-DEEPSEEK_API_URL = "your_api_url"
-
+DEEPSEEK_API_KEY = "sk-0dafa5bf8afc46dda30a951a58971d11"  
+DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
+SERVER_CHAN_KEY = "SCT324763TekomcN4copo04lCDYE7gMzzM" # 从 sct.ftqq.com 获取
 PWC_BASE_URL = "https://arxiv.paperswithcode.com/api/v0/papers/"
 
 def get_code_link(arxiv_url):
@@ -40,7 +40,7 @@ def summarize_with_deepseek(paper):
     payload = {
         "model": "deepseek-chat", 
         "messages": [
-            {"role": "system", "content": "你是一个学术分析专家，擅长将复杂的人工智能领域的论文总结得清晰易懂。"},
+            {"role": "system", "content": "你是一个资深天体物理学家，擅长解释引力波、黑洞和高红移星系领域的最新研究。"},
             {"role": "user", "content": prompt_text}
         ],
         "stream": False
@@ -86,11 +86,21 @@ def push_to_feishu(report_content):
     }
     requests.post(FEISHU_WEBHOOK, headers=header, json=payload)
 
+def push_to_wechat(report_content):
+    """发送微信推送 (Server酱)"""
+    url = f"https://sctapi.ftqq.com/{SERVER_CHAN_KEY}.send"
+    data = {
+        "title": f"今日arXiv天文学进展 {datetime.now().strftime('%m-%d')}",
+        "desp": report_content
+    }
+    requests.post(url, data=data)
+
 if __name__ == "__main__":
     print("正在搜集最新论文...")
     client = arxiv.Client()
     search = arxiv.Search(
-        query="abs:LLM OR abs:\"AI Agent\" OR abs:\"Deep Learning\"", 
+        # 建议使用 arXiv 的分类标签结合关键词，更加精准
+        query='(cat:astro-ph.HE OR cat:astro-ph.GA) AND (abs:"gravitational waves" OR abs:"binary black hole" OR abs:"Little Red Dots")', 
         max_results=3, 
         sort_by=arxiv.SortCriterion.SubmittedDate
     )
@@ -116,5 +126,5 @@ if __name__ == "__main__":
             summary = summarize_with_deepseek(paper_info)
             full_report += f"### {i+1}. {res.title}\n🔗 [原文]({res.entry_id}){code_md}\n{summary}\n\n---\n"
         
-        push_to_feishu(full_report)
+        push_to_wechat(full_report)
         print("推送成功！")
