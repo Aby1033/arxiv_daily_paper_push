@@ -120,8 +120,18 @@ def push_to_wechat(title, report_content):
 if __name__ == "__main__":
     client = arxiv.Client()
     
+
     # 获取 UTC 时间
     now_utc = datetime.utcnow()
+    
+    # --- 新增：读取历史推送记录 ---
+    HISTORY_FILE = "pushed_ids.txt"
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r") as f:
+            pushed_ids = set(f.read().splitlines())
+    else:
+        pushed_ids = set()
+    # ------------------------------
     
     # --- 精确日期匹配算法 ---
     # 目标：只抓取“最新一次更新”带给我们的那批投稿
@@ -130,11 +140,9 @@ if __name__ == "__main__":
         target_days = [(now_utc - timedelta(days=d)).date() for d in [1, 2, 3]]
         day_desc = "周末(五/六/日)"
     else: 
-        # 平时运行（周二至周五）：只抓取“前一天”提交的
-        # 比如周三 09:00 运行，只看周二提交的，这样就不会和周二运行看到的（周一提交）重复
-        target_days = [(now_utc - timedelta(days=1)).date()]
-        day_desc = "昨日"
-        
+        # 平时运行（周二至周五）：抓取前两天提交的，用历史记录来去重
+        target_days = [(now_utc - timedelta(days=d)).date() for d in [1, 2]]
+        day_desc = "过去两天"
     print(f"📅 正在检索发布日期为 {day_desc} 的新论文...")
 
     for topic in TOPICS:
@@ -148,10 +156,10 @@ if __name__ == "__main__":
         
         all_results_raw = list(client.results(search_all))
         
-        # --- 核心过滤逻辑：使用 in 检查是否在目标日期列表中 ---
+# --- 核心过滤逻辑：使用 in 检查日期，并核对是否已推送过 ---
         all_results = [
             res for res in all_results_raw 
-            if res.published.date() in target_days
+            if res.published.date() in target_days and res.entry_id not in pushed_ids
         ]
         
         total_count = len(all_results)
@@ -186,10 +194,17 @@ if __name__ == "__main__":
             topic_report += f"⚠️ 注：今日还有 {total_count - topic['max']} 篇论文未在此展示，请点击 arXiv 官网查看更多。"
 
         # 4. 推送
-        # 修改推送标题，加入 (当前展示数/总数) 的标识
+# （这里是你原本的推送代码）
         push_header = f"🔭 {topic['name']} ({actual_display_count}/{total_count}) {datetime.now().strftime('%m-%d')}"
         push_to_wechat(push_header, topic_report)
         print(f"{topic['name']} 推送成功！({actual_display_count}/{total_count})")
         
-        # 每个主题之间停顿以避开频率限制
+        # --- 新增：将这次新推送的论文 ID 追加写入记录文件 ---
+        if display_results:
+            with open(HISTORY_FILE, "a") as f:
+                for res in display_results:
+                    f.write(f"{res.entry_id}\n")
+                    pushed_ids.add(res.entry_id) # 同步更新内存中的记录，防止跨主题重复
+        # ----------------------------------------------------
+        
         time.sleep(5)
