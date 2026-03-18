@@ -119,6 +119,10 @@ def push_to_wechat(title, report_content):
 
 if __name__ == "__main__":
     client = arxiv.Client()
+
+    # 过滤掉早于 24 小时之前的论文
+    today = datetime.now()
+    cutoff_date = today - timedelta(days=1)
     
     for topic in TOPICS:
         print(f"正在搜集主题：{topic['name']}...")
