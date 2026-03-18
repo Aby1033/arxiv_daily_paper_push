@@ -86,11 +86,7 @@ def summarize_with_deepseek(paper, topic_name):
             return f"API 未预期响应: {json.dumps(res_json)}"
 
         return res_json['choices'][0]['message']['content']
-    except Exception as e:
-        return f"网络或系统错误: {str(e)}"
 
-    time.sleep(1)
-        
 
 def push_to_feishu(report_content):
     """发送飞书富文本卡片"""
@@ -111,7 +107,7 @@ def push_to_feishu(report_content):
     }
     requests.post(FEISHU_WEBHOOK, headers=header, json=payload)
 
-def push_to_wechat(report_content):
+def push_to_wechat(title, report_content):
     """发送微信推送 (Server酱)"""
     url = f"https://sctapi.ftqq.com/{SERVER_CHAN_KEY}.send"
     data = {
