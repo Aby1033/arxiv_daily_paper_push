@@ -1,0 +1,31 @@
+name: Daily ArXiv Astronomy Push
+
+on:
+  schedule:
+    # 每天北京时间早上 9:00 运行 (UTC 1:00)
+    - cron: '0 1 * * *'
+  workflow_dispatch: # 允许你手动点击按钮运行测试
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install arxiv requests
+
+      - name: Run script
+        env:
+          # 将刚才配置的 Secrets 映射给脚本使用
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          SERVER_CHAN_KEY: ${{ secrets.SERVER_CHAN_KEY }}
+        run: python daily_paper.py
