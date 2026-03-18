@@ -13,6 +13,25 @@ SERVER_CHAN_KEY = os.environ.get("SERVER_CHAN_KEY")
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 PWC_BASE_URL = "https://arxiv.paperswithcode.com/api/v0/papers/"
 
+# 定义三个主题及其对应的精准搜索词
+TOPICS = [
+    {
+        "name": "小红点 (Little Red Dots)",
+        "query": 'abs:"Little Red Dots" AND (cat:astro-ph.GA OR cat:astro-ph.CO)',
+        "max": 8
+    },
+    {
+        "name": "引力波 (Gravitational Waves)",
+        "query": 'abs:"gravitational waves" AND cat:astro-ph.HE',
+        "max": 5
+    },
+    {
+        "name": "超大质量双黑洞 (Supermassive Binary Black Holes)",
+        "query": 'abs:supermassive AND abs:binary AND abs:"black hole" AND (cat:astro-ph.GA OR cat:astro-ph.CO OR cat:astro-ph.HE)',
+        "max": 8
+    }
+]
+
 def get_code_link(arxiv_url):
     """从 PapersWithCode 获取代码链接"""
     arxiv_id = arxiv_url.split('/')[-1].split('v')[0]
@@ -42,7 +61,7 @@ def summarize_with_deepseek(paper):
     payload = {
         "model": "deepseek-chat", 
         "messages": [
-            {"role": "system", "content": "你是一个资深天体物理学家，擅长解释引力波、黑洞和高红移星系领域的最新研究。"},
+            {"role": "system", "content": "你是一个资深天体物理学家，擅长精炼地总结引力波、黑洞和高红移星系领域的最新研究。"},
             {"role": "user", "content": prompt_text}
         ],
         "stream": False
@@ -54,9 +73,6 @@ def summarize_with_deepseek(paper):
     }
 
       
-    try:
-        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=60)
-        res_json = response.json()
         
         # 增加这部分调试代码
         if 'error' in res_json:
@@ -98,35 +114,52 @@ def push_to_wechat(report_content):
     requests.post(url, data=data)
 
 if __name__ == "__main__":
-    print("正在搜集最新论文...")
     client = arxiv.Client()
-    search = arxiv.Search(
-        # 建议使用 arXiv 的分类标签结合关键词，更加精准
-        query = '(cat:astro-ph.HE OR cat:astro-ph.GA OR cat:astro-ph.CO) AND (Little Red Dots OR "binary black hole" OR "gravitational waves")', 
-        max_results=20, 
-        sort_by=arxiv.SortCriterion.SubmittedDate
-    )
     
-    full_report = ""
-    results = list(client.results(search))
-    
-    if not results:
-        print("今日暂无新论文。")
-    else:
-        for i, res in enumerate(results):
-            print(f"正在分析第 {i+1}/{len(results)} 篇: {res.title}")
+    for topic in TOPICS:
+        print(f"正在搜集主题：{topic['name']}...")
+        
+        # 1. 扩大搜索范围以确认今日总数（例如设定上限 50）
+        search_all = arxiv.Search(
+            query=topic['query'],
+            max_results=50, 
+            sort_by=arxiv.SortCriterion.SubmittedDate
+        )
+        all_results = list(client.results(search_all))
+        total_count = len(all_results)
+        
+        if total_count == 0:
+            print(f"{topic['name']} 今日无新论文。")
+            continue
             
+        # 2. 仅对设定的 max 数量（或更少）进行总结
+        display_results = all_results[:topic['max']] 
+        actual_display_count = len(display_results)
+        
+        # 初始化报告页眉，展示统计数据
+        topic_report = f"📊 今日共发现 {total_count} 篇相关论文，为您深度解析前 {actual_display_count} 篇：\n\n"
+        
+        for i, res in enumerate(display_results):
+            print(f"分析中: {res.title}")
+            
+            # 获取代码链接（保留你原有的函数逻辑）
             code_url = get_code_link(res.entry_id)
             code_md = f" | [💻 代码]({code_url})" if code_url else ""
             
-            paper_info = {
-                "title": res.title,
-                "summary": res.summary.replace('\n', ' '),
-                "url": res.entry_id
-            }
+            paper_info = {"title": res.title, "summary": res.summary.replace('\n', ' ')}
+            summary = summarize_with_deepseek(paper_info, topic['name'])
             
-            summary = summarize_with_deepseek(paper_info)
-            full_report += f"### {i+1}. {res.title}\n🔗 [原文]({res.entry_id}){code_md}\n{summary}\n\n---\n"
+            topic_report += f"### {i+1}. {res.title}\n🔗 [原文]({res.entry_id}){code_md}\n{summary}\n\n---\n"
         
-        push_to_wechat(full_report)
-        print("推送成功！")
+        # 3. 如果总数超过了展示数，在结尾添加提醒
+        if total_count > topic['max']:
+            topic_report += f"⚠️ 注：今日还有 {total_count - topic['max']} 篇论文未在此展示，请点击 arXiv 官网查看更多。"
+
+        # 4. 推送
+        # 修改推送标题，加入 (当前展示数/总数) 的标识
+        push_header = f"🔭 {topic['name']} ({actual_display_count}/{total_count}) {datetime.now().strftime('%m-%d')}"
+        push_to_wechat(push_header, topic_report)
+        print(f"{topic['name']} 推送成功！({actual_display_count}/{total_count})")
+        
+        # 每个主题之间停顿以避开频率限制
+        time.sleep(5)
