@@ -3,12 +3,14 @@ import requests
 import json
 from datetime import datetime, timedelta
 import time
+import os
 
 # --- 配置区 ---
 FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/your_webhook"
-DEEPSEEK_API_KEY = "sk-0dafa5bf8afc46dda30a951a58971d11"  
+# 建议在 daily_paper.py 顶部这样改，这样最安全
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+SERVER_CHAN_KEY = os.environ.get("SERVER_CHAN_KEY")
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
-SERVER_CHAN_KEY = "SCT324763TekomcN4copo04lCDYE7gMzzM" # 从 sct.ftqq.com 获取
 PWC_BASE_URL = "https://arxiv.paperswithcode.com/api/v0/papers/"
 
 def get_code_link(arxiv_url):
