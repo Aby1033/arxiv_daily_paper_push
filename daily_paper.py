@@ -52,10 +52,10 @@ def summarize_with_deepseek(paper, topic_name):
     
     请严格按此格式输出：
     【快速抓要点】: （简练的语言说明该研究解决了什么问题？提出了什么新的方法？得出了什么结果结论？）
-    【逻辑推导】：  (不要堆砌技术细节，而是还原作者的思考路径，请按“起承转合”的结构讲解：**背景（context）**：为什么大家之前解决不好这个问题？**破局（insight）**：作者是怎么灵光一现的？他的核心直觉是什么？怎么把问题拆解为更具体的子问题的？**拆解**：这个方法具体分几步实现？用1，2，3列表简洁描述输入到输出的过程。）
+    【逻辑推导】：  (不要堆砌技术细节，而是还原作者的思考路径，请按"起承转合"的结构讲解：**背景（context）**：为什么大家之前解决不好这个问题？**破局（insight）**：作者是怎么灵光一现的？他的核心直觉是什么？怎么把问题拆解为更具体的子问题的？**拆解**：这个方法具体分几步实现？用1，2，3列表简洁描述输入到输出的过程。）
     【技术细节】: （补充论文中最关键的1-2个技术实现细节（比如某个特殊的Loss Function或数据处理技巧）
     【局限性】: （潜在不足）
-    【专业知识解释】: （解释论文中核心实验方法涉及的专业名词概念
+    【专业知识解释】: （解释论文中核心实验方法涉及的专业名词概念）
     """
 
     payload = {
@@ -77,7 +77,6 @@ def summarize_with_deepseek(paper, topic_name):
         response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=90)
         res_json = response.json()
       
-        
         # 增加这部分调试代码
         if 'error' in res_json:
             return f"DeepSeek API 报错: {res_json['error']['message']}"
@@ -86,8 +85,8 @@ def summarize_with_deepseek(paper, topic_name):
             return f"API 未预期响应: {json.dumps(res_json)}"
 
         return res_json['choices'][0]['message']['content']
-     except Exception as e:
-        return f"网络或系统错误: {str(e)}   
+    except Exception as e:
+        return f"网络或系统错误: {str(e)}" 
 
 
 def push_to_feishu(report_content):
