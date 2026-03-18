@@ -36,7 +36,7 @@ def summarize_with_deepseek(paper):
     【逻辑推导】：  (不要堆砌技术细节，而是还原作者的思考路径，请按“起承转合”的结构讲解：**背景（context）**：为什么大家之前解决不好这个问题？**破局（insight）**：作者是怎么灵光一现的？他的核心直觉是什么？怎么把问题拆解为更具体的子问题的？**拆解**：这个方法具体分几步实现？用1，2，3列表简洁描述输入到输出的过程。）
     【技术细节】: （补充论文中最关键的1-2个技术实现细节（比如某个特殊的Loss Function或数据处理技巧）
     【局限性】: （潜在不足）
-    【专业知识解释】: （解释论文中核心实验方法涉及的专业名词概念（比如SFT微调、ResNet架构、推理等）
+    【专业知识解释】: （解释论文中核心实验方法涉及的专业名词概念
     """
 
     payload = {
@@ -102,8 +102,8 @@ if __name__ == "__main__":
     client = arxiv.Client()
     search = arxiv.Search(
         # 建议使用 arXiv 的分类标签结合关键词，更加精准
-        query='(cat:astro-ph.HE OR cat:astro-ph.GA) AND (abs:"gravitational waves" OR abs:"binary black hole" OR abs:"Little Red Dots")', 
-        max_results=3, 
+        query = '(cat:astro-ph.HE OR cat:astro-ph.GA OR cat:astro-ph.CO) AND (Little Red Dots OR "binary black hole" OR "gravitational waves")', 
+        max_results=20, 
         sort_by=arxiv.SortCriterion.SubmittedDate
     )
     
