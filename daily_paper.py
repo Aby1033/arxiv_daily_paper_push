@@ -43,7 +43,7 @@ def get_code_link(arxiv_url):
         pass
     return None
 
-def summarize_with_deepseek(paper):
+def summarize_with_deepseek(paper, topic_name):
     """使用 DeepSeek 进行论文摘要深度总结"""
     # 构造 Prompt
     prompt_text = f"""你是一个学术分析专家。请根据以下论文的标题和摘要提供中文深度分析。
