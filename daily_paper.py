@@ -117,7 +117,7 @@ def push_to_wechat(title, report_content):
     """发送微信推送 (Server酱)"""
     url = f"https://sctapi.ftqq.com/{SERVER_CHAN_KEY}.send"
     data = {
-        "title": f"今日arXiv天文学进展 {datetime.now().strftime('%m-%d')}",
+        "title": title,  # 修改这里，使用传入的变量
         "desp": report_content
     }
     requests.post(url, data=data)
