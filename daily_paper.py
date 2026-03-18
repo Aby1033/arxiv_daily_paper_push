@@ -119,26 +119,48 @@ def push_to_wechat(title, report_content):
 
 if __name__ == "__main__":
     client = arxiv.Client()
-
-    # 过滤掉早于 24 小时之前的论文
-    today = datetime.now()
-    cutoff_date = today - timedelta(days=1)
     
+    # 获取 UTC 时间
+    now_utc = datetime.utcnow()
+    
+    # --- 精确日期匹配算法 ---
+    # 目标：只抓取“最新一次更新”带给我们的那批投稿
+    if now_utc.weekday() == 0:  # 周一运行：抓取周五、周六、周日的投稿（这三天的通常在周一一起放出）
+        # 我们用列表包含这三天，防止漏掉周末加班提交的学者
+        target_days = [(now_utc - timedelta(days=d)).date() for d in [1, 2, 3]]
+        day_desc = "周末(五/六/日)"
+    else: 
+        # 平时运行（周二至周五）：只抓取“前一天”提交的
+        # 比如周三 09:00 运行，只看周二提交的，这样就不会和周二运行看到的（周一提交）重复
+        target_days = [(now_utc - timedelta(days=1)).date()]
+        day_desc = "昨日"
+        
+    print(f"📅 正在检索发布日期为 {day_desc} 的新论文...")
+
     for topic in TOPICS:
         print(f"正在搜集主题：{topic['name']}...")
         
-        # 1. 扩大搜索范围以确认今日总数（例如设定上限 50）
         search_all = arxiv.Search(
             query=topic['query'],
             max_results=50, 
             sort_by=arxiv.SortCriterion.SubmittedDate
         )
-        all_results = list(client.results(search_all))
+        
+        all_results_raw = list(client.results(search_all))
+        
+        # --- 核心过滤逻辑：使用 in 检查是否在目标日期列表中 ---
+        all_results = [
+            res for res in all_results_raw 
+            if res.published.date() in target_days
+        ]
+        
         total_count = len(all_results)
         
         if total_count == 0:
             print(f"{topic['name']} 今日无新论文。")
             continue
+            
+        # ... 后续分析和推送逻辑保持不变 ...
             
         # 2. 仅对设定的 max 数量（或更少）进行总结
         display_results = all_results[:topic['max']] 
