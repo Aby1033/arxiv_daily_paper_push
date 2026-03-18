@@ -72,6 +72,10 @@ def summarize_with_deepseek(paper):
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
     }
 
+    try:
+        # --- 核心修正：补全请求逻辑 ---
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=90)
+        res_json = response.json()
       
         
         # 增加这部分调试代码
@@ -84,6 +88,9 @@ def summarize_with_deepseek(paper):
         return res_json['choices'][0]['message']['content']
     except Exception as e:
         return f"网络或系统错误: {str(e)}"
+
+    time.sleep(1)
+        
 
 def push_to_feishu(report_content):
     """发送飞书富文本卡片"""
