@@ -29,7 +29,12 @@ TOPICS = [
         "name": "超大质量双黑洞 (Supermassive Binary Black Holes)",
         "query": 'abs:supermassive AND abs:binary AND abs:"black hole" AND (cat:astro-ph.GA OR cat:astro-ph.CO OR cat:astro-ph.HE)',
         "max": 8
-    }
+    },
+    {
+        "name": "活动星系核 (AGN)",
+        "query": '(abs:AGN* OR abs:FSRQ* OR abs:"BL Lac*" OR abs:"radio galaxy" OR abs:"radio galaxies") AND (cat:astro-ph.GA OR cat:astro-ph.HE)',
+        "max": 10
+    }    
 ]
 
 def get_code_link(arxiv_url):
@@ -194,8 +199,11 @@ if __name__ == "__main__":
             topic_report += f"⚠️ 注：今日还有 {total_count - topic['max']} 篇论文未在此展示，请点击 arXiv 官网查看更多。"
 
         # 4. 推送
-# （这里是你原本的推送代码）
-        push_header = f"🔭 {topic['name']} ({actual_display_count}/{total_count}) {datetime.now().strftime('%m-%d')}"
+
+        # 提取括号里的简短名称，例如 "Little Red Dots" 或 "AGN"
+        short_name = topic['name'].split('(')[-1].replace(')', '')
+        push_header = f"今日arXiv天文学进展 ({short_name}) {datetime.now().strftime('%m-%d')}"
+        
         push_to_wechat(push_header, topic_report)
         print(f"{topic['name']} 推送成功！({actual_display_count}/{total_count})")
         
