@@ -49,20 +49,18 @@ def get_code_link(arxiv_url):
     return None
 
 def fetch_with_retries(client, search_obj, max_retries=5, base_delay=5):
-    """带指数退避的强健抓取函数，专治 arXiv 429 和 503 报错"""
+    """带指数退避的强健抓取函数，拦截并处理 HTTP 429 和 503 报错"""
     for attempt in range(max_retries):
         try:
-            # 尝试使用传入的 client 和 search 对象进行抓取
             return list(client.results(search_obj))
         except Exception as err:
-            # 捕获所有异常（包括 arxiv.HTTPError 甚至网络断开）
             if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)  # 指数退避：5, 10, 20, 40秒...
-                print(f"⚠️ 抓取受阻 ({err})，触发保护机制，{delay} 秒后进行第 {attempt + 1} 次重试...")
+                delay = base_delay * (2 ** attempt)  # 延迟时间：5, 10, 20, 40秒...
+                print(f"⚠️ 抓取受阻 ({err})，触发防封锁机制，{delay} 秒后进行重试...")
                 time.sleep(delay)
             else:
                 print(f"❌ 重试 {max_retries} 次后依然失败，跳过本次搜索。")
-                return []  # 耗尽重试次数后返回空列表，而不是让整个程序崩溃
+                return []
 
 def summarize_with_deepseek(paper, topic_name):
     """使用 DeepSeek 进行论文摘要深度总结"""
@@ -179,9 +177,14 @@ if __name__ == "__main__":
                 max_results=50, 
                 sort_by=arxiv.SortCriterion.SubmittedDate
             )
-            
-            # --- 核心修改：使用你带来的强健函数替换原本的 list(...) ---
+
+# ✅ 使用强健函数替代直接抓取
             all_results_raw = fetch_with_retries(client, search_all)
+        
+        # 如果重试耗尽返回了空列表，直接跳过当前主题，保护程序不崩溃
+            if not all_results_raw:
+                continue
+            
             
             # 为了保护公共 IP，即使成功了，在切换到下一个主题前也强制平息 5 秒
             time.sleep(5) 
