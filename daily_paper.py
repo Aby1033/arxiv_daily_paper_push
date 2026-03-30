@@ -48,6 +48,22 @@ def get_code_link(arxiv_url):
         pass
     return None
 
+def fetch_with_retries(client, search_obj, max_retries=5, base_delay=5):
+    """带指数退避的强健抓取函数，专治 arXiv 429 和 503 报错"""
+    for attempt in range(max_retries):
+        try:
+            # 尝试使用传入的 client 和 search 对象进行抓取
+            return list(client.results(search_obj))
+        except Exception as err:
+            # 捕获所有异常（包括 arxiv.HTTPError 甚至网络断开）
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)  # 指数退避：5, 10, 20, 40秒...
+                print(f"⚠️ 抓取受阻 ({err})，触发保护机制，{delay} 秒后进行第 {attempt + 1} 次重试...")
+                time.sleep(delay)
+            else:
+                print(f"❌ 重试 {max_retries} 次后依然失败，跳过本次搜索。")
+                return []  # 耗尽重试次数后返回空列表，而不是让整个程序崩溃
+
 def summarize_with_deepseek(paper, topic_name):
     """使用 DeepSeek 进行论文摘要深度总结"""
     # 构造 Prompt
@@ -155,24 +171,30 @@ if __name__ == "__main__":
     print(f"📅 正在检索发布日期为 {day_desc} 的新论文...")
 
     for topic in TOPICS:
-        print(f"正在搜集主题：{topic['name']}...")
-        
-        search_all = arxiv.Search(
-            query=topic['query'],
-            max_results=50, 
-            sort_by=arxiv.SortCriterion.SubmittedDate
-        )
-        
-        all_results_raw = list(client.results(search_all))
-        time.sleep(5)
-        
-# --- 核心过滤逻辑：使用 in 检查日期，并核对是否已推送过 ---
-        all_results = [
-            res for res in all_results_raw 
-            if res.published.date() in target_days and res.entry_id not in pushed_ids
-        ]
-        
-        total_count = len(all_results)
+            print(f"正在搜集主题：{topic['name']}...")
+            
+            # 保持你原有的精细化搜索设置
+            search_all = arxiv.Search(
+                query=topic['query'],
+                max_results=50, 
+                sort_by=arxiv.SortCriterion.SubmittedDate
+            )
+            
+            # --- 核心修改：使用你带来的强健函数替换原本的 list(...) ---
+            all_results_raw = fetch_with_retries(client, search_all)
+            
+            # 为了保护公共 IP，即使成功了，在切换到下一个主题前也强制平息 5 秒
+            time.sleep(5) 
+            # --------------------------------------------------------
+            
+            # --- 核心过滤逻辑 ---
+            all_results = [
+                res for res in all_results_raw 
+                if res.published.date() in target_days and res.entry_id not in pushed_ids
+            ]
+            
+            total_count = len(all_results)
+
         
         if total_count == 0:
             print(f"{topic['name']} 今日无新论文。")
