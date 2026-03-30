@@ -123,8 +123,12 @@ def push_to_wechat(title, report_content):
     requests.post(url, data=data)
 
 if __name__ == "__main__":
-    client = arxiv.Client()
-    
+    # 配置更强大的客户端：强制每次请求间隔 5 秒，遇到错误自动重试 5 次
+    client = arxiv.Client(
+        page_size=100,
+        delay_seconds=5.0, 
+        num_retries=5
+    )
 
     # 获取 UTC 时间
     now_utc = datetime.utcnow()
@@ -160,6 +164,7 @@ if __name__ == "__main__":
         )
         
         all_results_raw = list(client.results(search_all))
+        time.sleep(5)
         
 # --- 核心过滤逻辑：使用 in 检查日期，并核对是否已推送过 ---
         all_results = [
